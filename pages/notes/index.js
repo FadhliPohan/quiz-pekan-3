@@ -36,6 +36,7 @@ const LayoutComponent = dynamic(() => import("@/layouts"));
 export default function Notes() {
   const router = useRouter();
   const [notes, setNotes] = useState({
+    id: "",
     title: "",
     description: "",
   });
@@ -45,7 +46,14 @@ export default function Notes() {
     description: "",
   });
   const { isOpen, onOpen, onClose } = useDisclosure();
-  // const { isOpen, onOpenDelete, onCloseDelete } = useDisclosure();
+  const [isDelete, setIsDelete] = useState(false);
+
+  const onOpenDelete = () => {
+    setIsDelete(true);
+  };
+  const onCloseDelete = () => {
+    setIsDelete(false);
+  };
 
   async function fetchingData() {
     const res = await fetch(
@@ -63,24 +71,48 @@ export default function Notes() {
     onOpen();
   };
 
-  const HandleSubmit = async () => {
-    try {
-      const response = await fetch(
-        "https://paace-f178cafcae7b.nevacloud.io/api/notes",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(notes),
+  const HandleSubmit = async (id) => {
+    if (id !== "") {
+      try {
+        const response = await fetch(
+          "https://paace-f178cafcae7b.nevacloud.io/api/notes/update/" + id,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              title: textInput?.title,
+              description: textInput?.description,
+            }),
+          }
+        );
+        const listNotes = await response.json();
+
+        if (listNotes?.success) {
+          fetchingData();
+          onClose();
         }
-      );
-      const result = await response.json();
-      if (result?.success) {
-        fetchingData();
-        onClose();
-      }
-    } catch (error) {}
+      } catch (error) {}
+    } else {
+      try {
+        const response = await fetch(
+          "https://paace-f178cafcae7b.nevacloud.io/api/notes",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(textInput),
+          }
+        );
+        const result = await response.json();
+        if (result?.success) {
+          fetchingData();
+          onClose();
+        }
+      } catch (error) {}
+    }
   };
 
   const ViewData = async (id) => {
@@ -102,10 +134,48 @@ export default function Notes() {
     } catch (error) {}
   };
 
-  const HandleDelete = (id) => {
+  const HandleDelete = async (id) => {
     try {
-      console.log(id);
-      onOpenDelete();
+      try {
+        const response = await fetch(
+          "https://paace-f178cafcae7b.nevacloud.io/api/notes/" + id,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        const listNotes = await response.json();
+
+        if (listNotes?.success) {
+          onOpenDelete();
+          setTextnput(listNotes?.data);
+        }
+      } catch (error) {}
+    } catch (error) {}
+  };
+
+  const DeleteData = async (id) => {
+    try {
+      try {
+        const response = await fetch(
+          "https://paace-f178cafcae7b.nevacloud.io/api/notes/delete/" + id,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        const listNotes = await response.json();
+
+        if (listNotes?.success) {
+          console.log("berhasil");
+          fetchingData();
+          onCloseDelete();
+        }
+      } catch (error) {}
     } catch (error) {}
   };
 
@@ -172,14 +242,14 @@ export default function Notes() {
             <ModalBody>
               <GridItem>
                 <Text>Title</Text>
-                <Input
+                {/* <Input
                   hidden={true}
                   type="text"
                   value={textInput?.id || ""}
                   onChange={(event) =>
                     setTextnput({ ...textInput, id: event.target.value })
                   }
-                />
+                /> */}
                 <Input
                   type="text"
                   value={textInput?.title || ""}
@@ -206,7 +276,12 @@ export default function Notes() {
               <Button colorScheme="blue" mr={3} onClick={onClose}>
                 Close
               </Button>
-              <Button variant="ghost" onClick={HandleSubmit}>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  HandleSubmit(textInput?.id || "");
+                }}
+              >
                 Simpan
               </Button>
             </ModalFooter>
@@ -215,21 +290,34 @@ export default function Notes() {
       </>
 
       {/* modal close */}
-      <Modal isDelete={isDelete} onClose={onCloseDelete}>
+      <Modal isOpen={isDelete} onClose={onCloseDelete}>
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>Hapus Data?</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            <p>Apakah Anda yakin untuk menghapus data ini?</p>
+            <p>
+              Apakah Anda yakin untuk menghapus data {textInput?.title || ""} ?
+            </p>
           </ModalBody>
 
           <ModalFooter>
-            <Button colorScheme="blue" mr={3} onClick={onCloseDelete}>
-              Close
+            <Button
+              colorScheme="blue"
+              variant="ghost"
+              mr={3}
+              onClick={onCloseDelete}
+            >
+              Batal
             </Button>
-            <Button variant="ghost" onClick={HandleDelete}>
-              Simpan
+            <Button
+              colorScheme="red"
+              // variant="ghost"
+              onClick={() => {
+                DeleteData(textInput?.id || "");
+              }}
+            >
+              Hapus
             </Button>
           </ModalFooter>
         </ModalContent>
